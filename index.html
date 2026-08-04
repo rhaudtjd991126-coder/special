@@ -170,6 +170,15 @@
 
     <!-- 3-2. 은행 관리 탭 Content -->
     <div id="teacherTabBank" class="space-y-4 hidden">
+      <!-- 가입 신청 승인 대기 목록 -->
+        <div class="bg-white p-5 rounded-2xl border shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-800 border-b pb-2">
+            <i class="fa-solid fa-clock-rotate-left text-amber-500 mr-1"></i> 금융 상품 가입 신청 승인 대기
+          </h3>
+          <div id="teacherPendingAppsList" class="space-y-2">
+            <!-- JS로 대기중인 목록 생성 -->
+          </div>
+        </div>
       <!-- 상품 등록 폼 -->
       <div class="bg-white p-5 rounded-2xl border shadow-sm space-y-3">
         <h3 class="font-bold text-slate-800 border-b pb-2"><i class="fa-solid fa-plus-circle text-purple-600 mr-1"></i> 새 금융 상품 / 카드 만들기</h3>
@@ -1015,6 +1024,24 @@ async function submitProductApplication() {
   }
 
   const period = document.getElementById("applyProdPeriodSelect").value;
+
+  const res = await callBackend("submitProductApplication", {
+    studentId: currentUser.id,
+    studentName: currentUser.name,
+    productId: selectedProdForApply.id,
+    productName: selectedProdForApply.name,
+    period: period
+  });
+
+  if (res.success) {
+    alert(`[신청 완료] ${selectedProdForApply.name} 가입 신청이 전달되었습니다. 교사 승인 후 계좌가 개설됩니다.`);
+    closeModal("productModal");
+  } else {
+    alert("신청 실패: " + res.message);
+  }
+}
+
+  const period = document.getElementById("applyProdPeriodSelect").value;
   alert(`[가입 신청 완료] ${selectedProdForApply.name} (${period}개월) 가입 신청이 교사에게 전달되었습니다.`);
   closeModal("productModal");
 }
@@ -1030,6 +1057,67 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+    // --- 교사 금융상품 승인/거절 관리 ---
+function renderPendingApplications() {
+  const container = document.getElementById("teacherPendingAppsList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const subs = teacherDataCache.subscriptions || [];
+  const pendingList = subs.filter(s => s[6] === '대기'); // 6번째 열이 Status ('대기')
+
+  if (pendingList.length === 0) {
+    container.innerHTML = `<p class="text-xs text-slate-400 py-2">현재 승인 대기 중인 가입 신청이 없습니다.</p>`;
+    return;
+  }
+
+  pendingList.forEach(s => {
+    const subId = s[0];
+    const studentName = s[2];
+    const productName = s[4];
+    const period = s[5];
+    const appliedAt = s[7];
+
+    const card = document.createElement("div");
+    card.className = "border border-amber-200 bg-amber-50/50 rounded-xl p-3 flex justify-between items-center text-xs";
+    card.innerHTML = `
+      <div>
+        <div class="font-bold text-slate-800">${studentName} 학생 <span class="text-amber-700 font-semibold">[${productName}]</span></div>
+        <p class="text-slate-500 mt-0.5">기간: ${period} | 신청일: ${appliedAt}</p>
+      </div>
+      <div class="flex space-x-1">
+        <button onclick="approveApp('${subId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg">승인</button>
+        <button onclick="rejectApp('${subId}')" class="bg-rose-500 hover:bg-rose-600 text-white font-bold px-2.5 py-1 rounded-lg">거절</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function approveApp(subId) {
+  if (!confirm("해당 학생의 상품 가입을 승인하고 계좌를 생성하시겠습니까?")) return;
+  const res = await callBackend("approveProductApplication", { subId });
+  if (res.success) {
+    alert(res.message);
+    loadTeacherData();
+  }
+}
+
+async function rejectApp(subId) {
+  if (!confirm("해당 학생의 상품 가입 신청을 거절하시겠습니까?")) return;
+  const res = await callBackend("rejectProductApplication", { subId });
+  if (res.success) {
+    alert(res.message);
+    loadTeacherData();
+  }
+}
+
+// loadTeacherData 완료 시 승인 목록도 함께 랜더링하도록 기존 loadTeacherData 보완
+const originalLoadTeacherData = loadTeacherData;
+loadTeacherData = async function() {
+  await originalLoadTeacherData();
+  renderPendingApplications();
+};
   </script>
 </body>
 </html>
