@@ -917,25 +917,6 @@ function renderTeacherStudentList() {
   });
 }
 
-    card.innerHTML = `
-      <div class="flex justify-between items-center border-b pb-2">
-        <div>
-          <span class="font-bold text-slate-800 text-base">${stName}</span>
-          <span class="text-xs text-slate-400 ml-1">(${stId})</span>
-        </div>
-        <button onclick="paySalarySingle('${stId}')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold px-2.5 py-1 rounded-lg border border-indigo-200">
-          급여계좌 입금
-        </button>
-      </div>
-      <div class="space-y-2">
-        ${accHtml}
-      </div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
 async function paySalarySingle(studentId) {
   const amount = prompt("지급할 금액을 입력하세요 (원):", "10000");
   if (!amount || isNaN(amount)) return;
