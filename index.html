@@ -1041,10 +1041,8 @@ async function submitProductApplication() {
   }
 }
 
-  const period = document.getElementById("applyProdPeriodSelect").value;
-  alert(`[가입 신청 완료] ${selectedProdForApply.name} (${period}개월) 가입 신청이 교사에게 전달되었습니다.`);
-  closeModal("productModal");
-}
+// 페이지 로드 시 기존 세션(로그인 상태) 복구
+window.addEventListener("DOMContentLoaded", () => {
     // 페이지 로드 시 기존 세션(로그인 상태) 복구
 window.addEventListener("DOMContentLoaded", () => {
   const savedUser = sessionStorage.getItem("currentUser");
