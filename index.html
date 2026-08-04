@@ -13,6 +13,8 @@
     body { font-family: 'Pretendard', sans-serif; }
     .touch-btn { min-height: 52px; }
   </style>
+  <!-- html5-qrcode 스캐너 라이브러리 (바코드/QR 인식) -->
+<script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col justify-between">
 
@@ -150,6 +152,10 @@
       <button id="tTab2" onclick="switchTeacherTab('bank')" class="flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600">
         <i class="fa-solid fa-landmark mr-1"></i> 은행 & 상품 관리
       </button>
+      <!-- 교사 탭 메뉴 바에 추가 -->
+<button onclick="switchTeacherTab('kioskStoreAdmin')" class="teacher-tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent hover:text-blue-600">
+  🏬 무인 매장/키오스크 관리
+</button>
     </div>
 
     <!-- 3-1. 학생 관리 탭 Content -->
@@ -167,7 +173,83 @@
         <!-- JS로 학생 정보 카드 목록 생성 -->
       </div>
     </div>
+<!-- 교사 탭 콘텐츠: kioskStoreAdmin -->
+<div id="tab-kioskStoreAdmin" class="teacher-tab-content hidden p-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- 좌측: 매장 설정 및 상품 등록 -->
+    <div class="bg-white p-5 rounded-lg shadow border border-gray-200">
+      <h3 class="text-xl font-bold mb-4 text-gray-800">🏪 키오스크 매장 & 상품 설정</h3>
+      <form id="storeConfigForm" onsubmit="handleSaveStore(event)" class="space-y-4">
+        <input type="hidden" id="editStoreId" value="">
+        <div>
+          <label class="block font-semibold text-sm mb-1">매장명</label>
+          <input type="text" id="storeNameInput" class="w-full border p-2 rounded" placeholder="예: 학급 매점, 꿈빛 카페" required oninput="updateKioskPreview()">
+        </div>
+        <div>
+          <label class="block font-semibold text-sm mb-1">매장 운영 방식</label>
+          <select id="storeTypeSelect" class="w-full border p-2 rounded" onchange="updateKioskPreview()">
+            <option value="barcode">📷 바코드 스캔형 (카메라/수동 바코드 입력)</option>
+            <option value="touch">👆 상품 선택 터치형 (메뉴 카탈로그 방식)</option>
+          </select>
+        </div>
+        
+        <!-- 커스텀 단계 설정 (JSON) -->
+        <div class="border p-3 rounded bg-gray-50 space-y-2">
+          <p class="font-bold text-sm text-gray-700">⚙️ 결제 단계 커스텀 옵션</p>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" id="stepBagOption" onchange="updateKioskPreview()">
+            <label for="stepBagOption" class="text-sm">봉투 구매 선택 단계 포함 (봉투 가격: </label>
+            <input type="number" id="stepBagPrice" value="100" class="w-20 border px-2 py-1 rounded text-sm" oninput="updateKioskPreview()">원)
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">결제 전 맞춤 안내 문구</label>
+            <input type="text" id="stepNoticeMsg" class="w-full border p-1 rounded text-sm" placeholder="예: 상품을 제자리에 정리해 주세요!" oninput="updateKioskPreview()">
+          </div>
+        </div>
 
+        <!-- 상품 목록 추가/관리 -->
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <label class="font-semibold text-sm">🛍️ 매장 판매 상품 목록</label>
+            <button type="button" onclick="addStoreItemRow()" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">+ 상품 추가</button>
+          </div>
+          <div id="storeItemListContainer" class="space-y-2 max-h-60 overflow-y-auto p-1 border rounded">
+            <!-- 동적으로 상품 입력 줄이 추가됩니다 -->
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">매장 저장하기</button>
+          <button type="button" onclick="resetStoreForm()" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">초기화</button>
+        </div>
+      </form>
+
+      <!-- 저장된 매장 목록 -->
+      <div class="mt-6">
+        <h4 class="font-bold text-md mb-2">📋 등록된 매장 목록</h4>
+        <div id="savedStoreList" class="space-y-2">
+          <!-- 매장 리스트가 동적 출력됩니다 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: PC 분할 실시간 미리보기 -->
+    <div class="bg-gray-900 text-white p-5 rounded-lg shadow border border-gray-700 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-gray-700 pb-3 mb-4">
+          <span class="text-xs bg-red-600 text-white px-2 py-1 rounded font-bold">LIVE PREVIEW</span>
+          <h4 class="font-bold text-lg text-yellow-400" id="previewStoreTitle">학급 매점 (미리보기)</h4>
+        </div>
+        <div id="kioskPreviewContent" class="space-y-4">
+          <!-- 스캔/터치 모드 실시간 화면 반영 -->
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-gray-800 text-xs text-gray-400 text-center">
+        💡 교사 설정에 따라 실제 학생용 키오스크 화면이 위와 같이 출력됩니다.
+      </div>
+    </div>
+  </div>
+</div>
     <!-- 3-2. 은행 관리 탭 Content -->
     <div id="teacherTabBank" class="space-y-4 hidden">
       <!-- 가입 신청 승인 대기 목록 -->
@@ -1195,6 +1277,559 @@ async function teacherWithdraw(accNum, accType) {
     alert("출금 실패: " + res.message);
   }
 }
+    // ==========================================
+// [5단계 추가] 키오스크 관련 프론트엔드 상태 & 로직
+// ==========================================
+
+var currentStores = [];
+var currentStoreConfig = null;
+var kioskCart = [];
+var html5QrcodeScanner = null;
+var kioskReceiptTimer = null;
+
+// 교사 화면: 매장 관리 초기화 및 조회
+function loadTeacherKioskStores() {
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.success) {
+      currentStores = res.stores || [];
+      renderSavedStoreList();
+    }
+  }).getStores();
+}
+
+function renderSavedStoreList() {
+  var container = document.getElementById('savedStoreList');
+  if (!container) return;
+  if (currentStores.length === 0) {
+    container.innerHTML = '<p class="text-xs text-gray-500">등록된 매장이 없습니다.</p>';
+    return;
+  }
+  var html = '';
+  currentStores.forEach(function(s) {
+    html += '<div class="flex justify-between items-center p-2 border rounded bg-gray-50 text-sm">';
+    html += '<div><strong>' + escapeHtml(s.storeName) + '</strong> (' + (s.storeType==='barcode'?'바코드형':'터치형') + ')</div>';
+    html += '<div class="flex gap-1">';
+    html += '<button onclick="openKioskMode(\'' + s.storeId + '\')" class="bg-green-600 text-white text-xs px-2 py-1 rounded">🚀 키오스크 실행</button>';
+    html += '<button onclick="editStoreConfig(\'' + s.storeId + '\')" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">수정</button>';
+    html += '<button onclick="deleteStoreConfig(\'' + s.storeId + '\')" class="bg-red-600 text-white text-xs px-2 py-1 rounded">삭제</button>';
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+// 매장 상품 입력 행 추가
+function addStoreItemRow(item) {
+  var container = document.getElementById('storeItemListContainer');
+  if (!container) return;
+  var div = document.createElement('div');
+  div.className = 'flex gap-2 items-center store-item-row';
+  div.innerHTML = `
+    <input type="text" placeholder="코드/바코드" value="${item ? item.code : ''}" class="item-code border p-1 rounded text-xs w-24" oninput="updateKioskPreview()">
+    <input type="text" placeholder="상품명" value="${item ? item.name : ''}" class="item-name border p-1 rounded text-xs flex-1" oninput="updateKioskPreview()">
+    <input type="number" placeholder="가격" value="${item ? item.price : ''}" class="item-price border p-1 rounded text-xs w-20" oninput="updateKioskPreview()">
+    <button type="button" onclick="this.parentElement.remove(); updateKioskPreview();" class="text-red-500 font-bold px-1">✕</button>
+  `;
+  container.appendChild(div);
+  updateKioskPreview();
+}
+
+// 교사 PC 분할 실시간 미리보기 업데이트
+function updateKioskPreview() {
+  var name = document.getElementById('storeNameInput').value || '학급 매점';
+  var type = document.getElementById('storeTypeSelect').value;
+  var bagOpt = document.getElementById('stepBagOption').checked;
+  var bagPrice = document.getElementById('stepBagPrice').value || 0;
+  var notice = document.getElementById('stepNoticeMsg').value;
+
+  document.getElementById('previewStoreTitle').innerText = name + ' (미리보기)';
+  
+  var previewBox = document.getElementById('kioskPreviewContent');
+  var html = '<div class="p-3 bg-gray-800 rounded text-xs space-y-2">';
+  html += '<p><strong>운영 방식:</strong> ' + (type === 'barcode' ? '📷 바코드 스캐너 모드' : '👆 상품 터치 선택 모드') + '</p>';
+  if (notice) html += '<p class="text-yellow-300"><strong>안내문구:</strong> "' + escapeHtml(notice) + '"</p>';
+  if (bagOpt) html += '<p class="text-green-300"><strong>봉투 옵션:</strong> 사용 (+' + bagPrice + '원)</p>';
+  
+  html += '<div class="mt-2 border-t border-gray-700 pt-2"><p class="font-bold mb-1">등록 중인 상품 미리보기:</p><ul class="list-disc pl-4 text-gray-300">';
+  var rows = document.querySelectorAll('.store-item-row');
+  if (rows.length === 0) {
+    html += '<li>등록된 상품이 없습니다.</li>';
+  } else {
+    rows.forEach(function(r) {
+      var itemName = r.querySelector('.item-name').value || '상품명';
+      var itemPrice = r.querySelector('.item-price').value || 0;
+      var itemCode = r.querySelector('.item-code').value || '-';
+      html += '<li>[' + escapeHtml(itemCode) + '] ' + escapeHtml(itemName) + ' - ' + Number(itemPrice).toLocaleString() + '원</li>';
+    });
+  }
+  html += '</ul></div></div>';
+  previewBox.innerHTML = html;
+}
+
+// 매장 저장
+function handleSaveStore(e) {
+  e.preventDefault();
+  var storeId = document.getElementById('editStoreId').value;
+  var name = document.getElementById('storeNameInput').value;
+  var type = document.getElementById('storeTypeSelect').value;
+  
+  var items = [];
+  document.querySelectorAll('.store-item-row').forEach(function(r) {
+    var code = r.querySelector('.item-code').value;
+    var itemName = r.querySelector('.item-name').value;
+    var price = Number(r.querySelector('.item-price').value) || 0;
+    if (code && itemName) {
+      items.push({ code: code, name: itemName, price: price });
+    }
+  });
+
+  var steps = {
+    bagOption: document.getElementById('stepBagOption').checked,
+    bagPrice: Number(document.getElementById('stepBagPrice').value) || 0,
+    noticeMsg: document.getElementById('stepNoticeMsg').value
+  };
+
+  var payload = { storeId: storeId, storeName: name, storeType: type, steps: steps, items: items };
+  
+  google.script.run.withSuccessHandler(function(res) {
+    alert(res.message);
+    if (res.success) {
+      resetStoreForm();
+      loadTeacherKioskStores();
+    }
+  }).saveStore(payload);
+}
+
+function resetStoreForm() {
+  document.getElementById('editStoreId').value = '';
+  document.getElementById('storeConfigForm').reset();
+  document.getElementById('storeItemListContainer').innerHTML = '';
+  updateKioskPreview();
+}
+
+function deleteStoreConfig(storeId) {
+  if (!confirm('이 매장을 삭제하시겠습니까?')) return;
+  google.script.run.withSuccessHandler(function(res) {
+    alert(res.message);
+    loadTeacherKioskStores();
+  }).deleteStore({ storeId: storeId });
+}
+
+// --- 실제 키오스크 모드 실행 로직 ---
+function openKioskMode(storeId) {
+  var store = currentStores.find(function(s) { return s.storeId === storeId; });
+  if (!store) return;
+  currentStoreConfig = store;
+  kioskCart = [];
+  
+  document.getElementById('kioskHeaderTitle').innerText = store.storeName;
+  document.getElementById('kioskScreenModal').classList.remove('hidden');
+
+  renderKioskCart();
+
+  if (store.storeType === 'barcode') {
+    document.getElementById('kioskBarcodeSection').classList.remove('hidden');
+    document.getElementById('kioskTouchSection').classList.add('hidden');
+    initBarcodeScanner();
+  } else {
+    document.getElementById('kioskBarcodeSection').classList.add('hidden');
+    document.getElementById('kioskTouchSection').classList.remove('hidden');
+    renderKioskTouchGrid();
+  }
+}
+
+function closeKioskMode() {
+  stopBarcodeScanner();
+  document.getElementById('kioskScreenModal').classList.add('hidden');
+}
+
+// 카메라 바코드 스캐너 연동 (html5-qrcode)
+function initBarcodeScanner() {
+  if (html5QrcodeScanner) return;
+  html5QrcodeScanner = new Html5Qrcode("reader");
+  html5QrcodeScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 150 } },
+    function(decodedText) {
+      onBarcodeScanned(decodedText);
+    },
+    function(error) { /* 스캔 오류 무시 */ }
+  ).catch(function(err) {
+    console.warn("카메라 접근 불가 또는 권한 없음:", err);
+  });
+}
+
+function stopBarcodeScanner() {
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.stop().then(function() {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }).catch(function(e) { html5QrcodeScanner = null; });
+  }
+}
+
+function handleManualBarcodeSubmit() {
+  var input = document.getElementById('manualBarcodeInput');
+  var code = input.value.trim();
+  if (code) {
+    onBarcodeScanned(code);
+    input.value = '';
+  }
+}
+
+function onBarcodeScanned(code) {
+  if (!currentStoreConfig) return;
+  var item = currentStoreConfig.items.find(function(i) { return i.code === code; });
+  if (item) {
+    addToKioskCart(item);
+  } else {
+    alert('등록되지 않은 바코드/상품코드입니다: ' + code);
+  }
+}
+
+// 터치형 카탈로그 그리드 출력
+function renderKioskTouchGrid() {
+  var grid = document.getElementById('kioskProductGrid');
+  if (!grid || !currentStoreConfig) return;
+  var html = '';
+  currentStoreConfig.items.forEach(function(item) {
+    html += `
+      <div onclick="addToKioskCart(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
+           class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 flex flex-col items-center justify-between text-center cursor-pointer active:scale-95 transition">
+        <div class="text-4xl mb-2">📦</div>
+        <div class="font-bold text-white text-sm line-clamp-2">${escapeHtml(item.name)}</div>
+        <div class="text-yellow-400 font-black mt-2">${Number(item.price).toLocaleString()}원</div>
+      </div>
+    `;
+  });
+  grid.innerHTML = html;
+}
+
+// 장바구니 관리
+function addToKioskCart(item) {
+  var existing = kioskCart.find(function(c) { return c.code === item.code; });
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    kioskCart.push({ code: item.code, name: item.name, price: Number(item.price), qty: 1 });
+  }
+  renderKioskCart();
+}
+
+function updateCartQty(code, delta) {
+  var item = kioskCart.find(function(c) { return c.code === code; });
+  if (item) {
+    item.qty += delta;
+    if (item.qty <= 0) {
+      kioskCart = kioskCart.filter(function(c) { return c.code !== code; });
+    }
+  }
+  renderKioskCart();
+}
+
+function clearKioskCart() {
+  kioskCart = [];
+  renderKioskCart();
+}
+
+function renderKioskCart() {
+  var container = document.getElementById('kioskCartList');
+  if (!container) return;
+  var total = 0;
+  var html = '';
+
+  kioskCart.forEach(function(item) {
+    var sum = item.price * item.qty;
+    total += sum;
+    html += `
+      <div class="bg-slate-700 p-2 rounded-lg flex justify-between items-center text-sm">
+        <div class="flex-1">
+          <div class="font-bold text-white">${escapeHtml(item.name)}</div>
+          <div class="text-xs text-slate-300">${item.price.toLocaleString()}원</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="updateCartQty('${item.code}', -1)" class="bg-slate-600 text-white w-6 h-6 rounded font-bold">-</button>
+          <span class="font-bold">${item.qty}</span>
+          <button onclick="updateCartQty('${item.code}', 1)" class="bg-slate-600 text-white w-6 h-6 rounded font-bold">+</button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html || '<p class="text-slate-400 text-xs text-center py-8">장바구니가 비어 있습니다.</p>';
+  document.getElementById('kioskTotalAmount').innerText = total.toLocaleString() + '원';
+}
+
+// --- 키오스크 다단계 결제 프로세스 ---
+function startKioskCheckoutProcess() {
+  if (kioskCart.length === 0) {
+    alert('장바구니에 상품을 담아주세요.');
+    return;
+  }
+  
+  var steps = currentStoreConfig.steps || {};
+  
+  // STEP 1 UI 세팅
+  if (steps.noticeMsg) {
+    document.getElementById('kioskNoticeBox').innerText = steps.noticeMsg;
+    document.getElementById('kioskNoticeBox').classList.remove('hidden');
+  } else {
+    document.getElementById('kioskNoticeBox').classList.add('hidden');
+  }
+
+  if (steps.bagOption) {
+    document.getElementById('kioskBagOptionBox').classList.remove('hidden');
+    document.getElementById('kioskBagPriceText').innerText = '+' + Number(steps.bagPrice).toLocaleString() + '원 추가';
+  } else {
+    document.getElementById('kioskBagOptionBox').classList.add('hidden');
+  }
+
+  document.getElementById('kioskBagCheckbox').checked = false;
+  updateStep1Total();
+
+  document.getElementById('kioskPayStep1').classList.remove('hidden');
+  document.getElementById('kioskPayStep2').classList.add('hidden');
+  document.getElementById('kioskPayStep3').classList.add('hidden');
+  document.getElementById('kioskPaymentModal').classList.remove('hidden');
+}
+
+function toggleKioskBagOption() {
+  updateStep1Total();
+}
+
+function getKioskFinalTotal() {
+  var total = kioskCart.reduce(function(acc, c) { return acc + (c.price * c.qty); }, 0);
+  var steps = currentStoreConfig.steps || {};
+  if (steps.bagOption && document.getElementById('kioskBagCheckbox').checked) {
+    total += Number(steps.bagPrice) || 0;
+  }
+  return total;
+}
+
+function updateStep1Total() {
+  document.getElementById('kioskStep1Total').innerText = getKioskFinalTotal().toLocaleString() + '원';
+}
+
+function goToKioskPayStep1() {
+  document.getElementById('kioskPayStep1').classList.remove('hidden');
+  document.getElementById('kioskPayStep2').classList.add('hidden');
+}
+
+function goToKioskPayStep2() {
+  document.getElementById('kioskPayStep1').classList.add('hidden');
+  document.getElementById('kioskPayStep2').classList.remove('hidden');
+}
+
+function closeKioskPayModal() {
+  document.getElementById('kioskPaymentModal').classList.add('hidden');
+}
+
+// 최종 결제 요청 (백엔드 승인)
+function submitKioskPaymentAction() {
+  var accNum = document.getElementById('kioskPayAccount').value.trim();
+  var pwd = document.getElementById('kioskPayPassword').value.trim();
+
+  if (!accNum || !pwd) {
+    alert('계좌번호와 비밀번호 4자리를 모두 입력하세요.');
+    return;
+  }
+
+  var summary = kioskCart.map(function(c) { return c.name + 'x' + c.qty; }).join(', ');
+  if (document.getElementById('kioskBagCheckbox').checked) {
+    summary += ' (봉투 포함)';
+  }
+
+  var payload = {
+    accountNumber: accNum,
+    password: pwd,
+    totalAmount: getKioskFinalTotal(),
+    storeName: currentStoreConfig.storeName,
+    summary: summary
+  };
+
+  google.script.run.withSuccessHandler(function(res) {
+    if (res.success) {
+      showKioskReceipt(res, summary);
+    } else {
+      alert('결제 실패: ' + res.message);
+    }
+  }).processKioskPayment(payload);
+}
+
+// 전자 영수증 출력 및 카운트다운
+function showKioskReceipt(res, summary) {
+  document.getElementById('receiptStoreName').innerText = '[' + currentStoreConfig.storeName + '] 영수증';
+  document.getElementById('receiptDate').innerText = res.timestamp;
+  document.getElementById('receiptStudent').innerText = res.studentName;
+  document.getElementById('receiptTotalAmount').innerText = getKioskFinalTotal().toLocaleString() + '원';
+  document.getElementById('receiptBalance').innerText = Number(res.newBalance).toLocaleString() + '원';
+
+  var itemsHtml = '';
+  kioskCart.forEach(function(c) {
+    itemsHtml += '<div class="flex justify-between"><span>' + escapeHtml(c.name) + ' x' + c.qty + '</span><span>' + (c.price * c.qty).toLocaleString() + '원</span></div>';
+  });
+  if (document.getElementById('kioskBagCheckbox').checked) {
+    var bagP = currentStoreConfig.steps.bagPrice || 0;
+    itemsHtml += '<div class="flex justify-between text-gray-500"><span>쇼핑 봉투</span><span>' + Number(bagP).toLocaleString() + '원</span></div>';
+  }
+  document.getElementById('receiptItems').innerHTML = itemsHtml;
+
+  document.getElementById('kioskPayStep2').classList.add('hidden');
+  document.getElementById('kioskPayStep3').classList.remove('hidden');
+
+  var secondsLeft = 5;
+  document.getElementById('receiptCountdown').innerText = secondsLeft;
+  
+  if (kioskReceiptTimer) clearInterval(kioskReceiptTimer);
+  kioskReceiptTimer = setInterval(function() {
+    secondsLeft -= 1;
+    document.getElementById('receiptCountdown').innerText = secondsLeft;
+    if (secondsLeft <= 0) {
+      clearInterval(kioskReceiptTimer);
+      resetKioskComplete();
+    }
+  }, 1000);
+}
+
+function resetKioskComplete() {
+  if (kioskReceiptTimer) clearInterval(kioskReceiptTimer);
+  document.getElementById('kioskPayAccount').value = '';
+  document.getElementById('kioskPayPassword').value = '';
+  closeKioskPayModal();
+  clearKioskCart();
+}
   </script>
+  <!-- 키오스크 실전 풀스크린 화면 모달 -->
+<div id="kioskScreenModal" class="fixed inset-0 bg-slate-900 z-50 hidden flex flex-col text-white">
+  <!-- 상단 헤더 -->
+  <header class="bg-slate-800 px-6 py-4 flex justify-between items-center border-b border-slate-700">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🏪</span>
+      <h1 id="kioskHeaderTitle" class="text-2xl font-black text-yellow-400">무인 키오스크</h1>
+    </div>
+    <button onclick="closeKioskMode()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm">
+      ✕ 키오스크 종료
+    </button>
+  </header>
+
+  <!-- 키오스크 메인 영역 (좌: 상품/스캔, 우: 장바구니 및 결제) -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 overflow-hidden p-4 gap-4">
+    <!-- 좌측 2열: 바코드 스캐너 또는 상품 선택 터치 패널 -->
+    <section class="lg:col-span-2 bg-slate-800 rounded-xl p-4 flex flex-col overflow-hidden border border-slate-700">
+      <!-- 바코드 스캐너 화면 (바코드 모드일 때) -->
+      <div id="kioskBarcodeSection" class="hidden flex-1 flex flex-col items-center justify-center space-y-4">
+        <div id="reader" class="w-full max-w-sm bg-black rounded-lg overflow-hidden border-2 border-yellow-400"></div>
+        <p class="text-slate-300 text-sm">카메라에 바코드를 비추거나 아래에 상품 코드를 직접 입력하세요.</p>
+        <div class="flex gap-2 w-full max-w-sm">
+          <input type="text" id="manualBarcodeInput" placeholder="바코드 번호 입력" class="flex-1 px-3 py-2 rounded text-black font-mono">
+          <button onclick="handleManualBarcodeSubmit()" class="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 font-bold rounded">입력</button>
+        </div>
+      </div>
+
+      <!-- 상품 터치 카탈로그 (터치 모드일 때) -->
+      <div id="kioskTouchSection" class="hidden flex-1 overflow-y-auto">
+        <div id="kioskProductGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <!-- 동적 상품 카드 생성 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 우측 1열: 장바구니 및 결제 다단계 -->
+    <section class="bg-slate-800 rounded-xl p-4 flex flex-col justify-between border border-slate-700">
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <h2 class="text-lg font-bold mb-3 border-b border-slate-700 pb-2 text-yellow-400 flex justify-between">
+          <span>🛒 선택한 상품</span>
+          <button onclick="clearKioskCart()" class="text-xs text-red-400 hover:underline">전체 삭제</button>
+        </h2>
+        <div id="kioskCartList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+          <!-- 장바구니 항목 출력 -->
+        </div>
+      </div>
+
+      <!-- 결제 정보 및 버튼 -->
+      <div class="mt-4 border-t border-slate-700 pt-3 space-y-3">
+        <div class="flex justify-between items-center text-xl font-black">
+          <span>총 결제금액:</span>
+          <span id="kioskTotalAmount" class="text-yellow-400">0원</span>
+        </div>
+        <button onclick="startKioskCheckoutProcess()" class="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl text-xl font-black shadow-lg">
+          💳 결제하기
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 키오스크 결제 다단계 팝업 모달 -->
+  <div id="kioskPaymentModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white text-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      
+      <!-- STEP 1: 옵션 및 안내 문구 -->
+      <div id="kioskPayStep1" class="space-y-4">
+        <h3 class="text-xl font-bold border-b pb-2 text-slate-800">🛍️ 결제 옵션 선택</h3>
+        <div id="kioskNoticeBox" class="bg-yellow-50 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 hidden">
+          <!-- 교사 지정 안내 문구 -->
+        </div>
+        <div id="kioskBagOptionBox" class="hidden border p-3 rounded-lg flex justify-between items-center">
+          <div>
+            <p class="font-bold text-sm">봉투를 구매하시겠습니까?</p>
+            <p id="kioskBagPriceText" class="text-xs text-gray-500">+100원 추가</p>
+          </div>
+          <input type="checkbox" id="kioskBagCheckbox" class="w-6 h-6" onchange="toggleKioskBagOption()">
+        </div>
+        <div class="text-right text-lg font-bold text-blue-600">
+          최종 금액: <span id="kioskStep1Total">0원</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="closeKioskPayModal()" class="flex-1 bg-gray-300 py-3 rounded-lg font-bold">취소</button>
+          <button onclick="goToKioskPayStep2()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold">다음단계 ➔</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: 계좌번호 & 비밀번호 입력 -->
+      <div id="kioskPayStep2" class="space-y-4 hidden">
+        <h3 class="text-xl font-bold border-b pb-2 text-slate-800">💳 학생 계좌 결제</h3>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">계좌번호 입력</label>
+          <input type="text" id="kioskPayAccount" class="w-full border-2 p-3 rounded-lg text-center font-mono text-lg" placeholder="123-456">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-600 mb-1">비밀번호 4자리</label>
+          <input type="password" maxlength="4" id="kioskPayPassword" class="w-full border-2 p-3 rounded-lg text-center font-mono text-2xl tracking-widest" placeholder="****">
+        </div>
+        <div class="flex gap-2">
+          <button onclick="goToKioskPayStep1()" class="flex-1 bg-gray-300 py-3 rounded-lg font-bold">이전</button>
+          <button onclick="submitKioskPaymentAction()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold">결제 승인</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: 전자 영수증 출력 및 완료 -->
+      <div id="kioskPayStep3" class="space-y-4 hidden text-center">
+        <div class="text-5xl">✅</div>
+        <h3 class="text-2xl font-bold text-green-600">결제가 완료되었습니다!</h3>
+        
+        <!-- 영수증 영역 -->
+        <div class="bg-gray-50 border p-4 rounded-lg text-left text-xs font-mono space-y-2 border-dashed border-gray-400">
+          <div class="text-center font-bold border-b pb-1 text-sm text-gray-700" id="receiptStoreName">[매장명] 영수증</div>
+          <div>거래일시: <span id="receiptDate">-</span></div>
+          <div>결제자: <span id="receiptStudent">-</span>님</div>
+          <div class="border-t border-b py-2 my-2 space-y-1" id="receiptItems">
+            <!-- 항목 출력 -->
+          </div>
+          <div class="flex justify-between font-bold text-sm">
+            <span>합계 금액:</span>
+            <span id="receiptTotalAmount">0원</span>
+          </div>
+          <div class="flex justify-between text-gray-500">
+            <span>결제후 잔액:</span>
+            <span id="receiptBalance">0원</span>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500"><span id="receiptCountdown">5</span>초 후 초기화 화면으로 이동합니다.</p>
+        <button onclick="resetKioskComplete()" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold">확인 (즉시 완료)</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 </body>
 </html>
