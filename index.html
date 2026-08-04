@@ -1025,8 +1025,19 @@ async function submitProductApplication() {
 
   const period = document.getElementById("applyProdPeriodSelect").value;
 
+  async function submitProductApplication() {
+  const signName = document.getElementById("applySignName").value.trim();
+  if (signName !== currentUser.name) {
+    alert(`서명란에 본인의 이름(${currentUser.name})을 정확히 작성해 주세요.`);
+    return;
+  }
+
+  const period = document.getElementById("applyProdPeriodSelect").value;
+  // studentId, id, user_id 중 존재하는 학번 프로퍼티 가져오기
+  const stId = currentUser.studentId || currentUser.id || currentUser.user_id;
+
   const res = await callBackend("submitProductApplication", {
-    studentId: currentUser.id,
+    studentId: stId,
     studentName: currentUser.name,
     productId: selectedProdForApply.id,
     productName: selectedProdForApply.name,
