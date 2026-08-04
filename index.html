@@ -355,6 +355,55 @@
   <!-- 3. 하단 카피라이트 -->
   <footer class="text-center py-4 text-xs text-slate-400">
     <p>© 2026 특수학급 실전 금융·키오스크 교육 시스템</p>
+
+    <!-- 3. 학생용 금융 상품 가입 팝업 -->
+  <div id="productModal" class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 bg-emerald-600 text-white flex justify-between items-center">
+        <h3 class="font-bold text-lg"><i class="fa-solid fa-piggy-bank mr-2"></i>금융 상품 가입</h3>
+        <button onclick="closeModal('productModal')" class="text-white/80 hover:text-white text-2xl px-2">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4">
+        <!-- 상품 목록 -->
+        <div id="prodListStep" class="space-y-3">
+          <p class="text-xs text-slate-500 font-bold">가입 가능한 금융 상품 목록</p>
+          <div id="studentProdContainer" class="space-y-3">
+            <!-- JS 생성 -->
+          </div>
+        </div>
+
+        <!-- 상품 가입 상세 신청 폼 -->
+        <div id="prodApplyStep" class="space-y-4 hidden">
+          <button onclick="backToProdList()" class="text-xs text-slate-500 hover:text-slate-800 font-bold mb-2">
+            <i class="fa-solid fa-arrow-left"></i> 목록으로 돌아가기
+          </button>
+          
+          <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+            <h4 id="applyProdName" class="font-bold text-lg text-emerald-900">상품명</h4>
+            <p id="applyProdRate" class="text-xs text-emerald-700 font-semibold mb-2">이율</p>
+            <p id="applyProdDesc" class="text-sm text-slate-700 bg-white p-3 rounded-lg border">약관 내용</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">가입 기간 선택</label>
+            <select id="applyProdPeriodSelect" class="w-full p-3 border rounded-xl font-bold text-slate-800">
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">서명 (이름 작성)</label>
+            <input type="text" id="applySignName" placeholder="본인 이름을 적으세요" class="w-full p-3 border rounded-xl text-lg font-bold text-center">
+          </div>
+
+          <button onclick="submitProductApplication()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl touch-btn">
+            가입 승인 요청하기
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+    
   </footer>
 
   <!-- 4. 자바스크립트 스크립트 -->
@@ -728,6 +777,235 @@
   } else {
     alert("메모 수정 실패: " + res.message);
   }
+}
+
+    // =================================================================
+// 4단계: 교사 관리자 & 학생 금융 상품 가입 JS
+// =================================================================
+let teacherDataCache = null;
+let selectedProdForApply = null;
+
+// --- 교사 뷰 전환 및 데이터 로드 ---
+function switchTeacherTab(tab) {
+  const t1 = document.getElementById("tTab1");
+  const t2 = document.getElementById("tTab2");
+  const c1 = document.getElementById("teacherTabStudents");
+  const c2 = document.getElementById("teacherTabBank");
+
+  if (tab === 'students') {
+    c1.classList.remove("hidden");
+    c2.classList.add("hidden");
+    t1.className = "flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white";
+    t2.className = "flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600";
+  } else {
+    c2.classList.remove("hidden");
+    c1.classList.add("hidden");
+    t2.className = "flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white";
+    t1.className = "flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600";
+  }
+}
+
+// 교사 로그인 시 자동으로 교사 데이터 불러오기 hook
+const originalRenderMainView = renderMainView;
+renderMainView = function() {
+  originalRenderMainView();
+  if (currentUser && currentUser.role === 'teacher') {
+    loadTeacherData();
+  }
+};
+
+async function loadTeacherData() {
+  const res = await callBackend("getTeacherData");
+  if (res.success) {
+    teacherDataCache = res;
+    renderTeacherStudentList();
+    renderTeacherProductList();
+  }
+}
+
+function renderTeacherStudentList() {
+  const container = document.getElementById("teacherStudentList");
+  container.innerHTML = "";
+
+  const users = teacherDataCache.users.filter(u => u[3] === 'student'); // 역할이 student인 경우
+
+  if (users.length === 0) {
+    container.innerHTML = `<div class="bg-white p-4 rounded-xl border text-center text-slate-400">가입한 학생이 없습니다.</div>`;
+    return;
+  }
+
+  users.forEach(u => {
+    const studentId = u[0];
+    const studentName = u[1];
+    const accs = teacherDataCache.accounts.filter(a => a[1].toString() === studentId.toString());
+
+    let accListHtml = "";
+    accs.forEach(a => {
+      accListHtml += `<div class="text-xs bg-slate-100 p-2 rounded mt-1 flex justify-between">
+        <span>${a[2]} (${a[0]})</span>
+        <span class="font-bold text-indigo-600">${Number(a[3]).toLocaleString()}원</span>
+      </div>`;
+    });
+
+    const card = document.createElement("div");
+    card.className = "bg-white p-4 rounded-2xl border shadow-sm space-y-2";
+    card.innerHTML = `
+      <div class="flex justify-between items-center border-b pb-2">
+        <div>
+          <span class="font-bold text-slate-800 text-base">${studentName}</span>
+          <span class="text-xs text-slate-400 ml-2">학번: ${studentId}</span>
+        </div>
+        <button onclick="paySalarySingle('${studentId}')" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-2.5 py-1 rounded-lg">
+          월급 지급
+        </button>
+      </div>
+      <div>
+        <p class="text-xs font-bold text-slate-500">보유 계좌 목록</p>
+        ${accListHtml || '<p class="text-xs text-slate-400">계좌 없음</p>'}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function paySalarySingle(studentId) {
+  const amount = prompt("지급할 월급 금액을 입력하세요 (원):", "10000");
+  if (!amount || isNaN(amount)) return;
+
+  const res = await callBackend("paySalary", { studentId: studentId, amount: Number(amount), memo: "개별 월급 지급" });
+  if (res.success) {
+    alert("월급이 성공적으로 지급되었습니다.");
+    loadTeacherData();
+  }
+}
+
+async function paySalaryBulk() {
+  const amount = prompt("전체 학생의 급여계좌로 지급할 월급 금액을 입력하세요 (원):", "10000");
+  if (!amount || isNaN(amount)) return;
+
+  const res = await callBackend("paySalary", { amount: Number(amount), memo: "전체 월급 지급" });
+  if (res.success) {
+    alert("모든 학생에게 월급이 지급되었습니다.");
+    loadTeacherData();
+  }
+}
+
+async function saveNewProduct() {
+  const category = document.getElementById("newProdCategory").value;
+  const name = document.getElementById("newProdName").value.trim();
+  const rateOrPrice = document.getElementById("newProdRate").value.trim();
+  const period = document.getElementById("newProdPeriod").value.trim();
+  const imageUrl = document.getElementById("newProdImg").value.trim();
+  const desc = document.getElementById("newProdDesc").value.trim();
+
+  if (!name) { alert("상품명을 입력해 주세요."); return; }
+
+  const res = await callBackend("saveProduct", {
+    category, name, rateOrPrice, period, imageUrl, desc, limits: "없음"
+  });
+
+  if (res.success) {
+    alert("신규 상품이 등록되었습니다.");
+    document.getElementById("newProdName").value = "";
+    document.getElementById("newProdRate").value = "";
+    document.getElementById("newProdDesc").value = "";
+    loadTeacherData();
+  }
+}
+
+function renderTeacherProductList() {
+  const container = document.getElementById("teacherProductList");
+  container.innerHTML = "";
+
+  const prods = teacherDataCache.products;
+  if (prods.length <= 1) { // 헤더만 있는 경우
+    container.innerHTML = `<p class="text-xs text-slate-400">등록된 상품이 없습니다.</p>`;
+    return;
+  }
+
+  for (let i = 1; i < prods.length; i++) {
+    const p = prods[i];
+    const item = document.createElement("div");
+    item.className = "border rounded-xl p-3 flex justify-between items-center text-xs bg-slate-50";
+    item.innerHTML = `
+      <div>
+        <span class="font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded mr-1">${p[1]}</span>
+        <span class="font-bold text-slate-800 text-sm">${p[2]}</span>
+        <p class="text-slate-500 mt-0.5">${p[3]} | 기간: ${p[7]}개월</p>
+      </div>
+    `;
+    container.appendChild(item);
+  }
+}
+
+// --- 학생용 금융 상품 가입 팝업 제어 ---
+async function openProductModal() {
+  document.getElementById("productModal").classList.remove("hidden");
+  document.getElementById("prodListStep").classList.remove("hidden");
+  document.getElementById("prodApplyStep").classList.add("hidden");
+
+  const res = await callBackend("getTeacherData"); // 등록된 상품 불러오기
+  const container = document.getElementById("studentProdContainer");
+  container.innerHTML = "";
+
+  if (res.success && res.products.length > 1) {
+    for (let i = 1; i < res.products.length; i++) {
+      const p = res.products[i];
+      const card = document.createElement("div");
+      card.className = "border border-slate-200 bg-white rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-2";
+      card.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">${p[1]}</span>
+            <h4 class="font-bold text-slate-800 text-base mt-1">${p[2]}</h4>
+          </div>
+          <span class="font-bold text-emerald-600 text-sm">${p[3]}</span>
+        </div>
+        <p class="text-xs text-slate-500 line-clamp-2">${p[5]}</p>
+        <button onclick="selectProdForApply('${p[0]}', '${p[2]}', '${p[3]}', '${p[5]}', '${p[7]}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs mt-1">
+          가입 신청하기
+        </button>
+      `;
+      container.appendChild(card);
+    }
+  } else {
+    container.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">현재 가입 가능한 금융 상품이 없습니다.</p>`;
+  }
+}
+
+function selectProdForApply(id, name, rate, desc, periodStr) {
+  selectedProdForApply = { id, name, rate, desc, periodStr };
+
+  document.getElementById("applyProdName").innerText = name;
+  document.getElementById("applyProdRate").innerText = rate;
+  document.getElementById("applyProdDesc").innerText = desc || "상세 약관 내용이 적용됩니다.";
+
+  const select = document.getElementById("applyProdPeriodSelect");
+  select.innerHTML = "";
+  const periods = periodStr ? periodStr.split(",") : ["3", "6", "12"];
+  periods.forEach(p => {
+    select.innerHTML += `<option value="${p.trim()}">${p.trim()} 개월</option>`;
+  });
+
+  document.getElementById("prodListStep").classList.add("hidden");
+  document.getElementById("prodApplyStep").classList.remove("hidden");
+}
+
+function backToProdList() {
+  document.getElementById("prodApplyStep").classList.add("hidden");
+  document.getElementById("prodListStep").classList.remove("hidden");
+}
+
+async function submitProductApplication() {
+  const signName = document.getElementById("applySignName").value.trim();
+  if (signName !== currentUser.name) {
+    alert(`서명란에 본인의 이름(${currentUser.name})을 정확히 작성해 주세요.`);
+    return;
+  }
+
+  const period = document.getElementById("applyProdPeriodSelect").value;
+  alert(`[가입 신청 완료] ${selectedProdForApply.name} (${period}개월) 가입 신청이 교사에게 전달되었습니다.`);
+  closeModal("productModal");
 }
   </script>
 </body>
