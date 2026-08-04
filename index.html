@@ -516,10 +516,14 @@
       btn.innerText = "로그인하기";
 
       if (res.success) {
-        currentUser = res.user;
-        currentUser.password = password; // 비밀번호 이체 검증용 저장
-        renderMainView();
-      } else {
+  currentUser = res.user;
+  currentUser.password = password; // 비밀번호 이체 검증용 저장
+
+  // 탭/기기별 독립 로그인 세션 저장 (동시 접속 유지)
+  sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+  renderMainView();
+} else {
         alert("로그인 실패: " + res.message);
       }
     }
@@ -543,13 +547,14 @@
     }
 
     function handleLogout() {
-      currentUser = null;
-      document.getElementById("authSection").classList.remove("hidden");
-      document.getElementById("studentMainView").classList.add("hidden");
-      document.getElementById("teacherMainView").classList.add("hidden");
-      document.getElementById("userInfoHeader").classList.add("hidden");
-      document.getElementById("loginForm").reset();
-    }
+  currentUser = null;
+  sessionStorage.removeItem("currentUser"); // 세션 저장소 삭제 추가
+  document.getElementById("authSection").classList.remove("hidden");
+  document.getElementById("studentMainView").classList.add("hidden");
+  document.getElementById("teacherMainView").classList.add("hidden");
+  document.getElementById("userInfoHeader").classList.add("hidden");
+  document.getElementById("loginForm").reset();
+}
 
     // =================================================================
     // 3단계: 학생 모바일 뱅킹 데이터 처리 로직
@@ -1013,6 +1018,18 @@ async function submitProductApplication() {
   alert(`[가입 신청 완료] ${selectedProdForApply.name} (${period}개월) 가입 신청이 교사에게 전달되었습니다.`);
   closeModal("productModal");
 }
+    // 페이지 로드 시 기존 세션(로그인 상태) 복구
+window.addEventListener("DOMContentLoaded", () => {
+  const savedUser = sessionStorage.getItem("currentUser");
+  if (savedUser) {
+    try {
+      currentUser = JSON.parse(savedUser);
+      renderMainView();
+    } catch (e) {
+      sessionStorage.removeItem("currentUser");
+    }
+  }
+});
   </script>
 </body>
 </html>
