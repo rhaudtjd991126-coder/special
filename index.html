@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>특수학급 금융 & 키오스크 교육 웹앱</title>
-  <!-- Tailwind CSS CDN (쉬운 스타일링 및 모바일 최적화) -->
+  <title>문일 에듀뱅크 - 모바일 뱅킹</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome 아이콘 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body { font-family: 'Pretendard', sans-serif; }
-    /* 특수학급 학생을 위한 터치 영역 확장 */
     .touch-btn { min-height: 52px; }
   </style>
 </head>
@@ -24,7 +23,6 @@
         <i class="fa-solid fa-building-columns text-2xl text-yellow-300"></i>
         <h1 class="font-bold text-lg tracking-tight">문일 에듀뱅크</h1>
       </div>
-      <!-- 로그인 정보 및 로그아웃 버튼 (로그인 후 표시) -->
       <div id="userInfoHeader" class="hidden flex items-center space-x-3">
         <span id="userBadge" class="text-xs bg-indigo-800 text-yellow-300 font-bold px-2 py-1 rounded-full">학생</span>
         <span id="userNameDisplay" class="font-bold text-sm">홍길동</span>
@@ -35,13 +33,11 @@
     </div>
   </header>
 
-  <!-- 2. 메인 컨테이너 (모바일 중심 가독성 레이아웃) -->
-  <main class="max-w-md mx-auto w-full flex-1 p-4 flex flex-col justify-center">
+  <!-- 2. 메인 컨테이너 -->
+  <main class="max-w-md mx-auto w-full flex-1 p-4 flex flex-col justify-start">
 
     <!-- A. 로그인 / 회원가입 인증 화면 -->
-    <section id="authSection" class="bg-white rounded-2xl shadow-xl p-6 border border-slate-200">
-      
-      <!-- 탭 전환 버튼 -->
+    <section id="authSection" class="bg-white rounded-2xl shadow-xl p-6 border border-slate-200 my-auto">
       <div class="flex border-b border-slate-200 mb-6">
         <button id="tabLoginBtn" onclick="switchAuthTab('login')" class="flex-1 pb-3 text-center font-bold text-indigo-600 border-b-2 border-indigo-600 text-lg">
           로그인
@@ -68,7 +64,7 @@
         </button>
       </form>
 
-      <!-- 회원가입 폼 (초기 숨김) -->
+      <!-- 회원가입 폼 -->
       <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
         <div>
           <label class="block text-sm font-semibold text-slate-600 mb-1">계정 구분</label>
@@ -104,52 +100,192 @@
       </form>
     </section>
 
-    <!-- B. 학생용 메인 뷰 (로그인 후 전환, 3단계에서 내부 기능 추가) -->
+    <!-- B. 학생용 모바일 뱅킹 메인 뷰 -->
     <section id="studentMainView" class="hidden space-y-4">
-      <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 text-center">
-        <h2 class="text-xl font-bold text-indigo-900 mb-1">반갑습니다, <span id="studentViewName">학생</span>님!</h2>
-        <p class="text-sm text-indigo-600">모바일 뱅킹 서비스에 오신 것을 환영합니다.</p>
+      
+      <!-- 상단 환영 영역 및 총잔액 -->
+      <div class="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white shadow-lg">
+        <div class="flex justify-between items-center mb-2">
+          <span class="text-sm font-medium opacity-90"><span id="studentViewName">학생</span>님의 내 계좌</span>
+          <button onclick="loadStudentData()" class="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded-lg">
+            <i class="fa-solid fa-rotate-right"></i> 새로고침
+          </button>
+        </div>
+        <p class="text-xs opacity-80 mb-1">총 보유 자산</p>
+        <h2 id="totalBalanceDisplay" class="text-3xl font-extrabold tracking-tight">0 원</h2>
       </div>
-      <!-- 3단계에서 계좌, 이체, 내역 카드 삽입 구역 -->
-      <div id="studentDashboardArea" class="bg-white p-6 rounded-2xl shadow border border-slate-200 text-center text-slate-400">
-        <i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-indigo-500"></i>
-        <p>계좌 정보를 불러오는 중입니다...</p>
+
+      <!-- 계좌 목록 표시 영역 -->
+      <div class="space-y-3" id="accountListContainer">
+        <!-- JS로 dynamically 채워짐 -->
       </div>
+
+      <!-- 금융 메뉴 바로가기 -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="openTransferModal()" class="bg-white hover:bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm touch-btn">
+          <i class="fa-solid fa-paper-plane text-2xl text-indigo-600 mb-1"></i>
+          <span class="font-bold text-sm text-slate-700">계좌 이체</span>
+        </button>
+        <button onclick="alert('4단계에서 금융 상품 가입 기능이 활성화됩니다!')" class="bg-white hover:bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm touch-btn">
+          <i class="fa-solid fa-piggy-bank text-2xl text-emerald-600 mb-1"></i>
+          <span class="font-bold text-sm text-slate-700">금융 상품</span>
+        </button>
+      </div>
+
     </section>
 
-    <!-- C. 교사용 메인 뷰 (학생 화면에서는 구조 자체가 완전히 숨겨짐) -->
+    <!-- C. 교사용 메인 뷰 (4~6단계에서 확장) -->
     <section id="teacherMainView" class="hidden space-y-4">
       <div class="bg-purple-50 border border-purple-200 rounded-2xl p-5 text-center">
         <h2 class="text-xl font-bold text-purple-900 mb-1">교사 관리자 모드</h2>
-        <p class="text-sm text-purple-600">학생 관리, 키오스크 매장 및 ATM 관리 센터입니다.</p>
-      </div>
-      <!-- 4~6단계에서 교사 전용 관리 탭 삽입 구역 -->
-      <div id="teacherDashboardArea" class="bg-white p-6 rounded-2xl shadow border border-slate-200 text-center text-slate-400">
-        <p>관리자 기능을 준비 중입니다.</p>
+        <p class="text-sm text-purple-600">4단계부터 교사 전용 학생 관리 및 금융 상품 편집이 연결됩니다.</p>
       </div>
     </section>
 
   </main>
+
+  <!-- ================================================================= -->
+  <!-- MODALS (팝업 창 모음) -->
+  <!-- ================================================================= -->
+
+  <!-- 1. 거래 내역 조회 팝업 -->
+  <div id="txHistoryModal" class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 bg-slate-100 border-b flex justify-between items-center">
+        <div>
+          <h3 class="font-bold text-lg text-slate-800" id="txModalAccTitle">계좌 거래 내역</h3>
+          <p class="text-xs text-slate-500" id="txModalAccNum">000-000</p>
+        </div>
+        <button onclick="closeModal('txHistoryModal')" class="text-slate-400 hover:text-slate-600 text-2xl px-2">&times;</button>
+      </div>
+      <div id="txListContainer" class="p-4 overflow-y-auto space-y-3 flex-1">
+        <!-- 거래내역 항목 생성 위치 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 계좌 이체 모달 (다단계 시나리오) -->
+  <div id="transferModal" class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
+    <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 bg-indigo-600 text-white flex justify-between items-center">
+        <h3 class="font-bold text-lg">계좌 이체</h3>
+        <button onclick="closeModal('transferModal')" class="text-white/80 hover:text-white text-2xl px-2">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4">
+        <!-- STEP 1: 입력 폼 -->
+        <div id="transferStep1" class="space-y-4">
+          <!-- 최근 이체 계좌 (최대 5개) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">최근 이체한 계좌</label>
+            <div id="recentTransferBadges" class="flex flex-wrap gap-2">
+              <span class="text-xs text-slate-400">최근 이체 내역이 없습니다.</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">출금 계좌 선택</label>
+            <select id="transferFromAcc" class="w-full px-3 py-3 border border-slate-300 rounded-xl text-base focus:ring-2 focus:ring-indigo-500">
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">입금 은행</label>
+            <select id="transferBank" class="w-full px-3 py-3 border border-slate-300 rounded-xl text-base bg-slate-50">
+              <option value="문일은행" selected>문일은행 (학교 은행)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">받는 계좌번호</label>
+            <input type="text" id="transferToAcc" placeholder="123-456 (숫자 및 -)" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-mono">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">이체 금액 (원)</label>
+            <input type="number" id="transferAmount" min="1" placeholder="0" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-xl font-bold text-right text-indigo-600">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-1">받는 사람 표시 메모 (선택)</label>
+            <input type="text" id="transferMemo" placeholder="예: 용돈, 책값" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-base">
+          </div>
+
+          <button onclick="goToTransferStep2()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-xl touch-btn mt-2">
+            다음 (예금주 확인)
+          </button>
+        </div>
+
+        <!-- STEP 2 & 3: 보이스피싱 예방 및 최종 확인 팝업 -->
+        <div id="transferStep2" class="space-y-4 hidden text-center py-2">
+          <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h4 class="text-xl font-bold text-slate-800">보이스피싱 예방 주의</h4>
+          <p class="text-sm text-slate-600 bg-amber-50 p-3 rounded-xl border border-amber-200 text-left">
+            🚨 <strong>잠깐만요!</strong><br>
+            검찰, 경찰, 은행이라며 돈을 보내라고 했나요?<br>
+            아는 사람이 급하게 돈을 요청했나요?<br>
+            의심스러운 경우 <strong>선생님께 먼저 꼭 확인</strong>하세요!
+          </p>
+
+          <div class="bg-slate-50 p-4 rounded-xl border text-left space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">받는 계좌:</span>
+              <span class="font-bold text-slate-800" id="confirmToAcc">123-456</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">이체 금액:</span>
+              <span class="font-bold text-indigo-600 text-base" id="confirmAmount">0 원</span>
+            </div>
+            <div class="flex justify-between text-sm border-t pt-2">
+              <span class="text-slate-500">메모:</span>
+              <span id="confirmMemo" class="text-slate-700">-</span>
+            </div>
+          </div>
+
+          <button onclick="goToTransferStep3()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg rounded-xl touch-btn">
+            확인했습니다 (비밀번호 입력)
+          </button>
+          <button onclick="backToStep1()" class="w-full bg-slate-200 text-slate-700 font-bold rounded-xl py-3">
+            취소하기
+          </button>
+        </div>
+
+        <!-- STEP 4: 비밀번호 입력 -->
+        <div id="transferStep3" class="space-y-4 hidden text-center py-2">
+          <h4 class="text-lg font-bold text-slate-800">비밀번호 4자리를 입력하세요</h4>
+          <input type="password" id="transferPassword" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="****" 
+                 class="w-3/4 mx-auto px-4 py-3 border-2 border-indigo-500 rounded-xl text-center text-2xl tracking-widest focus:outline-none">
+
+          <button onclick="executeTransfer()" id="btnExecuteTransfer" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-xl touch-btn mt-4">
+            이체 실행
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- 3. 하단 카피라이트 -->
   <footer class="text-center py-4 text-xs text-slate-400">
     <p>© 2026 특수학급 실전 금융·키오스크 교육 시스템</p>
   </footer>
 
-  <!-- 4. 자바스크립트 스크립트 연동 -->
+  <!-- 4. 자바스크립트 스크립트 -->
   <script>
     // =================================================================
     // [설정] 1단계에서 구글 앱스크립트 배포 후 받은 웹앱 URL을 입력하세요.
     // =================================================================
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwrU6cqJkJHfyV4gRRKlMpXbONcfHvobT6aDrW7xAy1WAp9zqnA5oZRZW_9vSVyih5QkA/exec";
 
-    // 현재 로그인된 사용자 정보 상태
     let currentUser = null;
+    let studentDataCache = { accounts: [], transactions: [], recentTransfers: [] };
 
-    // --- 백엔드 API 통신 공통 함수 (fetch) ---
+    // --- 백엔드 API 통신 공통 함수 ---
     async function callBackend(action, data = {}) {
       if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("여기에_1단계")) {
-        alert("구글 앱스크립트 웹앱 URL(GAS_WEB_APP_URL)이 설정되지 않았습니다. code.gs 배포 URL을 입력해 주세요.");
+        alert("구글 앱스크립트 웹앱 URL(GAS_WEB_APP_URL)이 설정되지 않았습니다.");
         throw new Error("GAS URL 미설정");
       }
 
@@ -162,12 +298,12 @@
         return await response.json();
       } catch (error) {
         console.error("통신 에러:", error);
-        alert("서버 통신 중 오류가 발생했습니다. 네트워크 연결을 확인해 주세요.");
+        alert("서버 통신 중 오류가 발생했습니다.");
         return { success: false, message: "통신 오류" };
       }
     }
 
-    // --- 탭 및 UI 전환 제어 ---
+    // --- 탭 및 UI 제어 ---
     function switchAuthTab(tab) {
       const loginForm = document.getElementById("loginForm");
       const registerForm = document.getElementById("registerForm");
@@ -200,7 +336,7 @@
       }
     }
 
-    // --- 회원가입 처리 ---
+    // --- 회원가입 / 로그인 ---
     async function handleRegister(e) {
       e.preventDefault();
       const studentId = document.getElementById("regStudentId").value.trim();
@@ -217,12 +353,7 @@
       btn.disabled = true;
       btn.innerText = "처리 중...";
 
-      const res = await callBackend("register", {
-        studentId: studentId,
-        name: name,
-        password: password,
-        role: role
-      });
+      const res = await callBackend("register", { studentId, name, password, role });
 
       btn.disabled = false;
       btn.innerText = "회원가입 완료";
@@ -236,7 +367,6 @@
       }
     }
 
-    // --- 로그인 처리 ---
     async function handleLogin(e) {
       e.preventDefault();
       const studentId = document.getElementById("loginStudentId").value.trim();
@@ -246,45 +376,38 @@
       btn.disabled = true;
       btn.innerText = "로그인 중...";
 
-      const res = await callBackend("login", {
-        studentId: studentId,
-        password: password
-      });
+      const res = await callBackend("login", { studentId, password });
 
       btn.disabled = false;
       btn.innerText = "로그인하기";
 
       if (res.success) {
         currentUser = res.user;
+        currentUser.password = password; // 비밀번호 이체 검증용 저장
         renderMainView();
       } else {
         alert("로그인 실패: " + res.message);
       }
     }
 
-    // --- 로그인 성공 후 뷰 랜더링 ---
     function renderMainView() {
       document.getElementById("authSection").classList.add("hidden");
       document.getElementById("userInfoHeader").classList.remove("hidden");
       document.getElementById("userNameDisplay").innerText = currentUser.name;
 
-      const userBadge = document.getElementById("userBadge");
-
       if (currentUser.role === 'student') {
-        userBadge.innerText = "학생";
-        userBadge.className = "text-xs bg-indigo-800 text-yellow-300 font-bold px-2 py-1 rounded-full";
+        document.getElementById("userBadge").innerText = "학생";
         document.getElementById("studentMainView").classList.remove("hidden");
-        document.getElementById("teacherMainView").classList.add("hidden"); // 교사 UI 철저 차단
+        document.getElementById("teacherMainView").classList.add("hidden");
         document.getElementById("studentViewName").innerText = currentUser.name;
+        loadStudentData();
       } else {
-        userBadge.innerText = "교사";
-        userBadge.className = "text-xs bg-purple-800 text-white font-bold px-2 py-1 rounded-full";
+        document.getElementById("userBadge").innerText = "교사";
         document.getElementById("teacherMainView").classList.remove("hidden");
         document.getElementById("studentMainView").classList.add("hidden");
       }
     }
 
-    // --- 로그아웃 처리 ---
     function handleLogout() {
       currentUser = null;
       document.getElementById("authSection").classList.remove("hidden");
@@ -292,6 +415,218 @@
       document.getElementById("teacherMainView").classList.add("hidden");
       document.getElementById("userInfoHeader").classList.add("hidden");
       document.getElementById("loginForm").reset();
+    }
+
+    // =================================================================
+    // 3단계: 학생 모바일 뱅킹 데이터 처리 로직
+    // =================================================================
+
+    async function loadStudentData() {
+      const res = await callBackend("getStudentData", { studentId: currentUser.studentId });
+      if (res.success) {
+        studentDataCache = res;
+        renderStudentAccounts();
+      }
+    }
+
+    function renderStudentAccounts() {
+      const container = document.getElementById("accountListContainer");
+      container.innerHTML = "";
+
+      let totalBalance = 0;
+
+      if (studentDataCache.accounts.length === 0) {
+        container.innerHTML = `<div class="bg-white p-6 rounded-2xl text-center text-slate-400 border">개설된 계좌가 없습니다.</div>`;
+        document.getElementById("totalBalanceDisplay").innerText = "0 원";
+        return;
+      }
+
+      studentDataCache.accounts.forEach(acc => {
+        totalBalance += acc.balance;
+
+        const card = document.createElement("div");
+        card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3";
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-xs px-2 py-0.5 rounded font-bold ${acc.type === '급여계좌' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}">${acc.type}</span>
+              <p class="text-sm font-mono text-slate-500 mt-1">${acc.accountNumber}</p>
+            </div>
+            <span class="text-xs font-semibold ${acc.status === '승인' ? 'text-emerald-600' : 'text-amber-600'}">${acc.status}</span>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">잔액</p>
+            <p class="text-2xl font-black text-slate-800">${acc.balance.toLocaleString()} 원</p>
+          </div>
+          <div class="flex space-x-2 pt-1 border-t border-slate-100">
+            <button onclick="openTxHistoryModal('${acc.accountNumber}')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs">
+              <i class="fa-solid fa-list-ul mr-1"></i> 거래 내역
+            </button>
+            <button onclick="quickTransfer('${acc.accountNumber}')" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 rounded-xl text-xs">
+              <i class="fa-solid fa-paper-plane mr-1"></i> 이체하기
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById("totalBalanceDisplay").innerText = totalBalance.toLocaleString() + " 원";
+    }
+
+    // --- 거래 내역 팝업 ---
+    function openTxHistoryModal(accNumber) {
+      document.getElementById("txModalAccNum").innerText = accNumber;
+      const listContainer = document.getElementById("txListContainer");
+      listContainer.innerHTML = "";
+
+      const matchedTx = studentDataCache.transactions.filter(t => t.accountNumber === accNumber);
+
+      if (matchedTx.length === 0) {
+        listContainer.innerHTML = `<p class="text-center text-slate-400 py-8 text-sm">거래 내역이 없습니다.</p>`;
+      } else {
+        matchedTx.forEach(tx => {
+          const isDeposit = tx.type.includes("입금");
+          const item = document.createElement("div");
+          item.className = "border-b border-slate-100 pb-3 flex justify-between items-center";
+          item.innerHTML = `
+            <div>
+              <p class="font-bold text-sm text-slate-800">${tx.targetName || tx.type}</p>
+              <p class="text-xs text-slate-400">${tx.datetime}</p>
+              <p class="text-xs text-slate-500 italic mt-0.5">${tx.memo ? '📝 ' + tx.memo : ''}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-bold text-base ${isDeposit ? 'text-blue-600' : 'text-red-500'}">
+                ${isDeposit ? '+' : '-'}${tx.amount.toLocaleString()} 원
+              </p>
+              <p class="text-xs text-slate-400">잔액 ${tx.balance.toLocaleString()} 원</p>
+            </div>
+          `;
+          listContainer.appendChild(item);
+        });
+      }
+
+      document.getElementById("txHistoryModal").classList.remove("hidden");
+    }
+
+    // --- 계좌 이체 마법사 ---
+    function openTransferModal() {
+      if (studentDataCache.accounts.length === 0) {
+        alert("이체할 수 있는 계좌가 없습니다.");
+        return;
+      }
+
+      // 출금 계좌 드롭다운 채우기
+      const selectAcc = document.getElementById("transferFromAcc");
+      selectAcc.innerHTML = "";
+      studentDataCache.accounts.forEach(acc => {
+        selectAcc.innerHTML += `<option value="${acc.accountNumber}">${acc.type} (${acc.accountNumber}) - 잔액: ${acc.balance.toLocaleString()}원</option>`;
+      });
+
+      // 최근 이체 계좌 배지 채우기 (최대 5개)
+      const recentContainer = document.getElementById("recentTransferBadges");
+      recentContainer.innerHTML = "";
+      if (studentDataCache.recentTransfers && studentDataCache.recentTransfers.length > 0) {
+        studentDataCache.recentTransfers.forEach(rec => {
+          recentContainer.innerHTML += `
+            <button onclick="fillRecentAccount('${rec.accountNumber}')" class="text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-full hover:bg-indigo-100 font-medium">
+              ${rec.targetName} (${rec.accountNumber})
+            </button>
+          `;
+        });
+      } else {
+        recentContainer.innerHTML = `<span class="text-xs text-slate-400">최근 이체 내역이 없습니다.</span>`;
+      }
+
+      // 초기화 및 STEP 1 표시
+      backToStep1();
+      document.getElementById("transferModal").classList.remove("hidden");
+    }
+
+    function quickTransfer(accNum) {
+      openTransferModal();
+      document.getElementById("transferFromAcc").value = accNum;
+    }
+
+    function fillRecentAccount(accNum) {
+      document.getElementById("transferToAcc").value = accNum;
+    }
+
+    function backToStep1() {
+      document.getElementById("transferStep1").classList.remove("hidden");
+      document.getElementById("transferStep2").classList.add("hidden");
+      document.getElementById("transferStep3").classList.add("hidden");
+    }
+
+    function goToTransferStep2() {
+      const toAcc = document.getElementById("transferToAcc").value.trim();
+      const amount = Number(document.getElementById("transferAmount").value);
+      const fromAcc = document.getElementById("transferFromAcc").value;
+      const memo = document.getElementById("transferMemo").value.trim();
+
+      if (!toAcc) { alert("받는 계좌번호를 입력해 주세요."); return; }
+      if (!amount || amount <= 0) { alert("올바른 이체 금액을 입력해 주세요."); return; }
+
+      // 잔액 부족 확인
+      const senderAcc = studentDataCache.accounts.find(a => a.accountNumber === fromAcc);
+      if (senderAcc && senderAcc.balance < amount) {
+        alert("출금 계좌의 잔액이 부족합니다.");
+        return;
+      }
+
+      document.getElementById("confirmToAcc").innerText = toAcc;
+      document.getElementById("confirmAmount").innerText = amount.toLocaleString() + " 원";
+      document.getElementById("confirmMemo").innerText = memo || "-";
+
+      document.getElementById("transferStep1").classList.add("hidden");
+      document.getElementById("transferStep2").classList.remove("hidden");
+    }
+
+    function goToTransferStep3() {
+      document.getElementById("transferStep2").classList.add("hidden");
+      document.getElementById("transferStep3").classList.remove("hidden");
+      document.getElementById("transferPassword").value = "";
+    }
+
+    async function executeTransfer() {
+      const pwdInput = document.getElementById("transferPassword").value.trim();
+
+      if (pwdInput !== currentUser.password) {
+        alert("비밀번호가 일치하지 않습니다. 다시 확인해 주세요.");
+        return;
+      }
+
+      const btn = document.getElementById("btnExecuteTransfer");
+      btn.disabled = true;
+      btn.innerText = "이체 처리 중...";
+
+      const fromAcc = document.getElementById("transferFromAcc").value;
+      const toAcc = document.getElementById("transferToAcc").value.trim();
+      const amount = Number(document.getElementById("transferAmount").value);
+      const memo = document.getElementById("transferMemo").value.trim();
+
+      const res = await callBackend("transfer", {
+        studentId: currentUser.studentId,
+        senderName: currentUser.name,
+        fromAccount: fromAcc,
+        toAccount: toAcc,
+        amount: amount,
+        memo: memo
+      });
+
+      btn.disabled = false;
+      btn.innerText = "이체 실행";
+
+      if (res.success) {
+        alert(`[이체 성공] ${res.receiverName}님에게 ${amount.toLocaleString()}원이 성공적으로 이체되었습니다!`);
+        closeModal("transferModal");
+        loadStudentData(); // 잔액 및 거래내역 실시간 갱신
+      } else {
+        alert("이체 실패: " + res.message);
+      }
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.add("hidden");
     }
   </script>
 </body>
