@@ -1043,8 +1043,6 @@ async function submitProductApplication() {
 
 // 페이지 로드 시 기존 세션(로그인 상태) 복구
 window.addEventListener("DOMContentLoaded", () => {
-    // 페이지 로드 시 기존 세션(로그인 상태) 복구
-window.addEventListener("DOMContentLoaded", () => {
   const savedUser = sessionStorage.getItem("currentUser");
   if (savedUser) {
     try {
