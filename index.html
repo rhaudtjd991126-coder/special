@@ -845,8 +845,13 @@ function renderTeacherStudentList() {
   const users = teacherDataCache.users || [];
   const accounts = teacherDataCache.accounts || [];
 
-  // 학생 목록만 추출 (교사 제외)
-  const students = users.filter(u => u[3] !== '교사' && u[0] !== 'Role');
+  // 1. 시트 헤더 행 및 교사 계정 제외하고 학생만 필터링
+  // Users 시트 열 구조: [0: 학번_ID, 1: 비밀번호, 2: 이름, 3: 역할]
+  const students = users.filter(u => {
+    const id = u[0] ? u[0].toString().trim() : "";
+    const role = u[3] ? u[3].toString().trim() : "";
+    return role !== '교사' && role !== '역할' && id !== '학번_ID' && id !== '학번' && id !== '';
+  });
 
   if (students.length === 0) {
     container.innerHTML = `<p class="text-xs text-slate-400 py-4 text-center">등록된 학생이 없습니다.</p>`;
@@ -854,11 +859,11 @@ function renderTeacherStudentList() {
   }
 
   students.forEach(st => {
-    const stId = st[1].toString();
-    const stName = st[2];
+    const stId = st[0].toString().trim(); // 0번 열이 올바른 학번_ID
+    const stName = st[2];                 // 2번 열이 이름
     
-    // 해당 학생의 모든 계좌 추출
-    const stAccs = accounts.filter(a => a[1].toString() === stId);
+    // 해당 학생의 학번(stId)과 일치하는 모든 계좌 가져오기 (Accounts 시트 1번 열: 학번_ID)
+    const stAccs = accounts.filter(a => a[1] && a[1].toString().trim() === stId);
 
     const card = document.createElement("div");
     card.className = "bg-white p-4 rounded-2xl border shadow-sm space-y-3";
