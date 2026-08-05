@@ -143,20 +143,19 @@
     <p class="text-xs text-purple-600">학생 관리 및 금융 상품을 등록/관리합니다.</p>
   </div>
 
-  <div id="teacherDashboardArea" class="space-y-4">
-    <!-- 교사 서브 탭 Navigation -->
-    <div class="flex bg-white rounded-xl p-1 border shadow-sm">
-      <button id="tTab1" onclick="switchTeacherTab('students')" class="flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white">
-        <i class="fa-solid fa-users mr-1"></i> 학생 관리
-      </button>
-      <button id="tTab2" onclick="switchTeacherTab('bank')" class="flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600">
-        <i class="fa-solid fa-landmark mr-1"></i> 은행 & 상품 관리
-      </button>
-      <!-- 교사 탭 메뉴 바에 추가 -->
-<button onclick="switchTeacherTab('kioskStoreAdmin')" class="teacher-tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent hover:text-blue-600">
-  🏬 무인 매장/키오스크 관리
-</button>
-    </div>
+<div id="teacherDashboardArea" class="space-y-4">
+  <!-- 교사 서브 탭 Navigation -->
+  <div class="flex bg-white rounded-xl p-1 border shadow-sm">
+    <button id="tTab1" onclick="switchTeacherTab('students')" class="flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white">
+      <i class="fa-solid fa-users mr-1"></i> 학생 관리
+    </button>
+    <button id="tTab2" onclick="switchTeacherTab('bank')" class="flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600">
+      <i class="fa-solid fa-landmark mr-1"></i> 은행 & 상품 관리
+    </button>
+    <button id="tTab3" onclick="switchTeacherTab('kioskStoreAdmin')" class="flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600">
+      <i class="fa-solid fa-store mr-1"></i> 무인 매장/키오스크 관리
+    </button>
+  </div>
 
     <!-- 3-1. 학생 관리 탭 Content -->
     <div id="teacherTabStudents" class="space-y-3">
@@ -882,22 +881,44 @@ let teacherDataCache = null;
 let selectedProdForApply = null;
 
 // --- 교사 뷰 전환 및 데이터 로드 ---
+// --- 교사 뷰 전환 및 데이터 로드 (3개 탭 대응) ---
 function switchTeacherTab(tab) {
   const t1 = document.getElementById("tTab1");
   const t2 = document.getElementById("tTab2");
+  const t3 = document.getElementById("tTab3"); // 신규: 키오스크 탭 버튼
+
   const c1 = document.getElementById("teacherTabStudents");
   const c2 = document.getElementById("teacherTabBank");
+  const c3 = document.getElementById("tab-kioskStoreAdmin"); // 신규: 키오스크 탭 콘텐츠
 
+  const activeClass = "flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white";
+  const inactiveClass = "flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600";
+
+  // 1. 전체 콘텐츠 일단 숨기기
+  if (c1) c1.classList.add("hidden");
+  if (c2) c2.classList.add("hidden");
+  if (c3) c3.classList.add("hidden");
+
+  // 2. 전체 버튼 비활성화 스타일 적용
+  if (t1) t1.className = inactiveClass;
+  if (t2) t2.className = inactiveClass;
+  if (t3) t3.className = inactiveClass;
+
+  // 3. 클릭한 탭 활성화
   if (tab === 'students') {
-    c1.classList.remove("hidden");
-    c2.classList.add("hidden");
-    t1.className = "flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white";
-    t2.className = "flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600";
-  } else {
-    c2.classList.remove("hidden");
-    c1.classList.add("hidden");
-    t2.className = "flex-1 py-2.5 rounded-lg font-bold text-sm bg-purple-600 text-white";
-    t1.className = "flex-1 py-2.5 rounded-lg font-bold text-sm text-slate-500 hover:text-purple-600";
+    if (c1) c1.classList.remove("hidden");
+    if (t1) t1.className = activeClass;
+  } else if (tab === 'bank') {
+    if (c2) c2.classList.remove("hidden");
+    if (t2) t2.className = activeClass;
+  } else if (tab === 'kiosk' || tab === 'kioskStoreAdmin') {
+    if (c3) c3.classList.remove("hidden");
+    if (t3) t3.className = activeClass;
+    
+    // 키오스크 매장 목록 자동 불러오기
+    if (typeof loadTeacherKioskStores === 'function') {
+      loadTeacherKioskStores();
+    }
   }
 }
 
