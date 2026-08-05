@@ -190,6 +190,13 @@
             <option value="touch">👆 상품 선택 터치형 (메뉴 카탈로그 방식)</option>
           </select>
         </div>
+
+        <!-- 1번 코드 삽입 위치 -->
+        <div class="space-y-1 mt-3 border-t pt-3">
+          <label class="block text-xs font-bold text-slate-700">🖼️ 키오스크 메인 안내 포스터 URL (선택)</label>
+          <input type="text" id="stepPosterImg" placeholder="https://i.imgur.com/... (미리캔버스/캔바 포스터 이미지 주소)" class="w-full border p-2 rounded text-xs" oninput="updateKioskPreview()">
+          <p class="text-[11px] text-slate-400">* 비워두면 기본 텍스트 안내판이 뜨고, Imgur/미리캔버스 이미지 주소를 넣으면 포스터가 화면 전체에 표시됩니다.</p>
+        </div>
         
         <!-- 커스텀 단계 설정 (JSON) -->
         <div class="border p-3 rounded bg-gray-50 space-y-2">
@@ -1298,10 +1305,9 @@ async function teacherWithdraw(accNum, accType) {
   }
 }
 // ==========================================
-// [5단계 수정 완료] 키오스크 관련 프론트엔드 상태 & 로직
+// [통합 완료] 키오스크 기능 (개별 상품 이미지 + 메인 포스터 화면)
 // ==========================================
 
-// 1. 누락되었던 HTML 이스케이프 함수 추가
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -1318,7 +1324,7 @@ var kioskCart = [];
 var html5QrcodeScanner = null;
 var kioskReceiptTimer = null;
 
-// 교사 화면: 매장 관리 초기화 및 조회 (callBackend 사용으로 수정)
+// 교사 화면: 매장 목록 불러오기
 async function loadTeacherKioskStores() {
   try {
     const res = await callBackend('getStores');
@@ -1340,7 +1346,7 @@ function renderSavedStoreList() {
   }
   var html = '';
   currentStores.forEach(function(s) {
-    html += '<div class="flex justify-between items-center p-2 border rounded bg-gray-50 text-sm">';
+    html += '<div class="flex justify-between items-center p-2 border rounded bg-gray-50 text-sm mb-2">';
     html += '<div><strong>' + escapeHtml(s.storeName) + '</strong> (' + (s.storeType==='barcode'?'바코드형':'터치형') + ')</div>';
     html += '<div class="flex gap-1">';
     html += '<button onclick="openKioskMode(\'' + s.storeId + '\')" class="bg-green-600 text-white text-xs px-2 py-1 rounded">🚀 키오스크 실행</button>';
@@ -1351,35 +1357,38 @@ function renderSavedStoreList() {
   container.innerHTML = html;
 }
 
-// 매장 상품 입력 행 추가
+// 매장 상품 입력 행 추가 (개별 이미지 URL 포함)
 function addStoreItemRow(item) {
   var container = document.getElementById('storeItemListContainer');
   if (!container) return;
   var div = document.createElement('div');
-  div.className = 'flex gap-2 items-center store-item-row';
+  div.className = 'flex flex-wrap gap-2 items-center store-item-row bg-gray-50 p-2 rounded border border-gray-200';
   div.innerHTML = `
-    <input type="text" placeholder="코드/바코드" value="${item ? item.code : ''}" class="item-code border p-1 rounded text-xs w-24" oninput="updateKioskPreview()">
-    <input type="text" placeholder="상품명" value="${item ? item.name : ''}" class="item-name border p-1 rounded text-xs flex-1" oninput="updateKioskPreview()">
+    <input type="text" placeholder="코드/바코드" value="${item ? escapeHtml(item.code || '') : ''}" class="item-code border p-1 rounded text-xs w-24" oninput="updateKioskPreview()">
+    <input type="text" placeholder="상품명" value="${item ? escapeHtml(item.name || '') : ''}" class="item-name border p-1 rounded text-xs flex-1" oninput="updateKioskPreview()">
     <input type="number" placeholder="가격" value="${item ? item.price : ''}" class="item-price border p-1 rounded text-xs w-20" oninput="updateKioskPreview()">
-    <button type="button" onclick="this.parentElement.remove(); updateKioskPreview();" class="text-red-500 font-bold px-1">✕</button>
+    <input type="text" placeholder="상품 이미지 URL (Imgur 등)" value="${item ? escapeHtml(item.image || '') : ''}" class="item-image border p-1 rounded text-xs flex-1 min-w-[140px]" oninput="updateKioskPreview()">
+    <button type="button" onclick="this.parentElement.remove(); updateKioskPreview();" class="text-red-500 font-bold px-1 hover:bg-red-100 rounded">✕</button>
   `;
   container.appendChild(div);
   updateKioskPreview();
 }
 
-// 교사 PC 분할 실시간 미리보기 업데이트
+// 실시간 교사 미리보기 (포스터 & 상품 미리보기)
 function updateKioskPreview() {
   var nameInput = document.getElementById('storeNameInput');
   var typeSelect = document.getElementById('storeTypeSelect');
   var bagOptInput = document.getElementById('stepBagOption');
   var bagPriceInput = document.getElementById('stepBagPrice');
   var noticeInput = document.getElementById('stepNoticeMsg');
+  var posterInput = document.getElementById('stepPosterImg');
 
   var name = nameInput ? nameInput.value || '학급 매점' : '학급 매점';
   var type = typeSelect ? typeSelect.value : 'barcode';
   var bagOpt = bagOptInput ? bagOptInput.checked : false;
   var bagPrice = bagPriceInput ? bagPriceInput.value || 0 : 0;
   var notice = noticeInput ? noticeInput.value : '';
+  var posterImg = posterInput ? posterInput.value.trim() : '';
 
   var titleEl = document.getElementById('previewStoreTitle');
   if (titleEl) titleEl.innerText = name + ' (미리보기)';
@@ -1389,26 +1398,41 @@ function updateKioskPreview() {
 
   var html = '<div class="p-3 bg-gray-800 rounded text-xs space-y-2">';
   html += '<p><strong>운영 방식:</strong> ' + (type === 'barcode' ? '📷 바코드 스캐너 모드' : '👆 상품 터치 선택 모드') + '</p>';
-  if (notice) html += '<p class="text-yellow-300"><strong>안내문구:</strong> "' + escapeHtml(notice) + '"</p>';
+  
+  if (posterImg) {
+    html += '<div class="my-2"><p class="text-indigo-300 font-bold mb-1">🖼️ 등록된 메인 포스터:</p><img src="' + escapeHtml(posterImg) + '" class="w-full max-h-40 object-contain rounded bg-slate-900 border border-slate-700" onerror="this.src=\'https://via.placeholder.com/300x150?text=Invalid+Image+URL\'"></div>';
+  } else if (notice) {
+    html += '<p class="text-yellow-300"><strong>안내문구:</strong> "' + escapeHtml(notice) + '"</p>';
+  }
+
   if (bagOpt) html += '<p class="text-green-300"><strong>봉투 옵션:</strong> 사용 (+' + bagPrice + '원)</p>';
   
-  html += '<div class="mt-2 border-t border-gray-700 pt-2"><p class="font-bold mb-1">등록 중인 상품 미리보기:</p><ul class="list-disc pl-4 text-gray-300">';
+  html += '<div class="mt-2 border-t border-gray-700 pt-2"><p class="font-bold mb-2">등록 상품 목록:</p><div class="grid grid-cols-2 gap-2 text-gray-300">';
   var rows = document.querySelectorAll('.store-item-row');
   if (rows.length === 0) {
-    html += '<li>등록된 상품이 없습니다.</li>';
+    html += '<p class="col-span-2 text-gray-400">등록된 상품이 없습니다.</p>';
   } else {
     rows.forEach(function(r) {
       var itemName = r.querySelector('.item-name').value || '상품명';
       var itemPrice = r.querySelector('.item-price').value || 0;
       var itemCode = r.querySelector('.item-code').value || '-';
-      html += '<li>[' + escapeHtml(itemCode) + '] ' + escapeHtml(itemName) + ' - ' + Number(itemPrice).toLocaleString() + '원</li>';
+      var itemImg = r.querySelector('.item-image').value.trim();
+
+      var imgHtml = itemImg 
+        ? '<img src="' + escapeHtml(itemImg) + '" class="w-8 h-8 object-cover rounded bg-slate-700" onerror="this.src=\'https://via.placeholder.com/32?text=Error\'">'
+        : '<div class="w-8 h-8 bg-slate-700 rounded flex items-center justify-center text-xs">📦</div>';
+
+      html += '<div class="flex items-center gap-2 bg-gray-900 p-1.5 rounded border border-gray-700">';
+      html += imgHtml;
+      html += '<div class="overflow-hidden"><div class="font-bold truncate text-white">' + escapeHtml(itemName) + '</div><div class="text-yellow-400">' + Number(itemPrice).toLocaleString() + '원</div></div>';
+      html += '</div>';
     });
   }
-  html += '</ul></div></div>';
+  html += '</div></div></div>';
   previewBox.innerHTML = html;
 }
 
-// 매장 저장 (callBackend 사용으로 수정)
+// 매장 저장
 async function handleSaveStore(e) {
   e.preventDefault();
   var storeId = document.getElementById('editStoreId').value;
@@ -1417,18 +1441,20 @@ async function handleSaveStore(e) {
   
   var items = [];
   document.querySelectorAll('.store-item-row').forEach(function(r) {
-    var code = r.querySelector('.item-code').value;
-    var itemName = r.querySelector('.item-name').value;
+    var code = r.querySelector('.item-code').value.trim();
+    var itemName = r.querySelector('.item-name').value.trim();
     var price = Number(r.querySelector('.item-price').value) || 0;
+    var image = r.querySelector('.item-image').value.trim();
     if (code && itemName) {
-      items.push({ code: code, name: itemName, price: price });
+      items.push({ code: code, name: itemName, price: price, image: image });
     }
   });
 
   var steps = {
     bagOption: document.getElementById('stepBagOption').checked,
     bagPrice: Number(document.getElementById('stepBagPrice').value) || 0,
-    noticeMsg: document.getElementById('stepNoticeMsg').value
+    noticeMsg: document.getElementById('stepNoticeMsg').value,
+    posterImg: document.getElementById('stepPosterImg') ? document.getElementById('stepPosterImg').value.trim() : ''
   };
 
   var payload = { storeId: storeId, storeName: name, storeType: type, steps: steps, items: items };
@@ -1450,6 +1476,34 @@ function resetStoreForm() {
   updateKioskPreview();
 }
 
+// 기존 매장 수정 불러오기
+function editStoreConfig(storeId) {
+  var store = currentStores.find(function(s) { return s.storeId === storeId; });
+  if (!store) return;
+
+  document.getElementById('editStoreId').value = store.storeId;
+  document.getElementById('storeNameInput').value = store.storeName;
+  document.getElementById('storeTypeSelect').value = store.storeType;
+
+  var steps = store.steps || {};
+  document.getElementById('stepBagOption').checked = !!steps.bagOption;
+  document.getElementById('stepBagPrice').value = steps.bagPrice || 100;
+  document.getElementById('stepNoticeMsg').value = steps.noticeMsg || '';
+  if (document.getElementById('stepPosterImg')) {
+    document.getElementById('stepPosterImg').value = steps.posterImg || '';
+  }
+
+  var container = document.getElementById('storeItemListContainer');
+  container.innerHTML = '';
+  if (store.items && store.items.length > 0) {
+    store.items.forEach(function(item) {
+      addStoreItemRow(item);
+    });
+  } else {
+    updateKioskPreview();
+  }
+}
+
 async function deleteStoreConfig(storeId) {
   if (!confirm('이 매장을 삭제하시겠습니까?')) return;
   const res = await callBackend('deleteStore', { storeId: storeId });
@@ -1459,7 +1513,7 @@ async function deleteStoreConfig(storeId) {
   }
 }
 
-// --- 실제 키오스크 모드 실행 로직 ---
+// 실제 키오스크 모드 열기 (포스터 이미지 렌더링 지원)
 function openKioskMode(storeId) {
   var store = currentStores.find(function(s) { return s.storeId === storeId; });
   if (!store) return;
@@ -1474,6 +1528,22 @@ function openKioskMode(storeId) {
   if (store.storeType === 'barcode') {
     document.getElementById('kioskBarcodeSection').classList.remove('hidden');
     document.getElementById('kioskTouchSection').classList.add('hidden');
+    
+    // 포스터 이미지가 있는 경우 키오스크 화면 중앙에 포스터 표시
+    var displayArea = document.getElementById('barcodeDisplayArea');
+    if (displayArea) {
+      if (store.steps && store.steps.posterImg) {
+        displayArea.innerHTML = `<img src="${escapeHtml(store.steps.posterImg)}" class="w-full max-h-[450px] object-contain rounded-xl shadow-lg my-auto" alt="키오스크 안내">`;
+      } else {
+        displayArea.innerHTML = `
+          <div class="text-center p-8 bg-slate-800 rounded-2xl border border-slate-700">
+            <div class="text-5xl mb-4">🛒</div>
+            <h3 class="text-xl font-bold text-white mb-2">바코드를 스캐너에 대어주세요</h3>
+            <p class="text-sm text-slate-400">${escapeHtml(store.steps ? store.steps.noticeMsg : '')}</p>
+          </div>
+        `;
+      }
+    }
     initBarcodeScanner();
   } else {
     document.getElementById('kioskBarcodeSection').classList.add('hidden');
@@ -1487,19 +1557,16 @@ function closeKioskMode() {
   document.getElementById('kioskScreenModal').classList.add('hidden');
 }
 
-// 카메라 바코드 스캐너 연동 (html5-qrcode)
 function initBarcodeScanner() {
   if (html5QrcodeScanner) return;
   html5QrcodeScanner = new Html5Qrcode("reader");
   html5QrcodeScanner.start(
     { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 150 } },
-    function(decodedText) {
-      onBarcodeScanned(decodedText);
-    },
-    function(error) { /* 스캔 오류 무시 */ }
+    function(decodedText) { onBarcodeScanned(decodedText); },
+    function(error) {}
   ).catch(function(err) {
-    console.warn("카메라 접근 불가 또는 권한 없음:", err);
+    console.warn("카메라 접근 불가:", err);
   });
 }
 
@@ -1527,29 +1594,33 @@ function onBarcodeScanned(code) {
   if (item) {
     addToKioskCart(item);
   } else {
-    alert('등록되지 않은 바코드/상품코드입니다: ' + code);
+    alert('등록되지 않은 바코드입니다: ' + code);
   }
 }
 
-// 터치형 카탈로그 그리드 출력
+// 터치형 카탈로그 (개별 이미지 카드 지원)
 function renderKioskTouchGrid() {
   var grid = document.getElementById('kioskProductGrid');
   if (!grid || !currentStoreConfig) return;
   var html = '';
   currentStoreConfig.items.forEach(function(item) {
+    var imgTag = item.image
+      ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" class="w-full h-28 object-cover rounded-lg mb-2 bg-slate-800" onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Image';">`
+      : `<div class="w-full h-28 bg-slate-800 rounded-lg mb-2 flex items-center justify-center text-4xl">📦</div>`;
+
     html += `
       <div onclick="addToKioskCart(${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-           class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-4 flex flex-col items-center justify-between text-center cursor-pointer active:scale-95 transition">
-        <div class="text-4xl mb-2">📦</div>
-        <div class="font-bold text-white text-sm line-clamp-2">${escapeHtml(item.name)}</div>
-        <div class="text-yellow-400 font-black mt-2">${Number(item.price).toLocaleString()}원</div>
+           class="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl p-3 flex flex-col justify-between text-center cursor-pointer active:scale-95 transition overflow-hidden">
+        ${imgTag}
+        <div class="font-bold text-white text-sm line-clamp-1">${escapeHtml(item.name)}</div>
+        <div class="text-yellow-400 font-black mt-1 text-base">${Number(item.price).toLocaleString()}원</div>
       </div>
     `;
   });
   grid.innerHTML = html;
 }
 
-// 장바구니 관리
+// 장바구니 및 결제 로직
 function addToKioskCart(item) {
   var existing = kioskCart.find(function(c) { return c.code === item.code; });
   if (existing) {
@@ -1604,7 +1675,6 @@ function renderKioskCart() {
   document.getElementById('kioskTotalAmount').innerText = total.toLocaleString() + '원';
 }
 
-// --- 키오스크 다단계 결제 프로세스 ---
 function startKioskCheckoutProcess() {
   if (kioskCart.length === 0) {
     alert('장바구니에 상품을 담아주세요.');
@@ -1667,7 +1737,6 @@ function closeKioskPayModal() {
   document.getElementById('kioskPaymentModal').classList.add('hidden');
 }
 
-// 최종 결제 요청 (callBackend 사용으로 수정)
 async function submitKioskPaymentAction() {
   var accNum = document.getElementById('kioskPayAccount').value.trim();
   var pwd = document.getElementById('kioskPayPassword').value.trim();
@@ -1700,7 +1769,6 @@ async function submitKioskPaymentAction() {
   }
 }
 
-// 전자 영수증 출력 및 카운트다운
 function showKioskReceipt(res, summary) {
   document.getElementById('receiptStoreName').innerText = '[' + currentStoreConfig.storeName + '] 영수증';
   document.getElementById('receiptDate').innerText = res.timestamp;
