@@ -1297,9 +1297,20 @@ async function teacherWithdraw(accNum, accType) {
     alert("출금 실패: " + res.message);
   }
 }
-    // ==========================================
-// [5단계 추가] 키오스크 관련 프론트엔드 상태 & 로직
 // ==========================================
+// [5단계 수정 완료] 키오스크 관련 프론트엔드 상태 & 로직
+// ==========================================
+
+// 1. 누락되었던 HTML 이스케이프 함수 추가
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
 var currentStores = [];
 var currentStoreConfig = null;
@@ -1307,14 +1318,17 @@ var kioskCart = [];
 var html5QrcodeScanner = null;
 var kioskReceiptTimer = null;
 
-// 교사 화면: 매장 관리 초기화 및 조회
-function loadTeacherKioskStores() {
-  google.script.run.withSuccessHandler(function(res) {
-    if (res.success) {
+// 교사 화면: 매장 관리 초기화 및 조회 (callBackend 사용으로 수정)
+async function loadTeacherKioskStores() {
+  try {
+    const res = await callBackend('getStores');
+    if (res && res.success) {
       currentStores = res.stores || [];
       renderSavedStoreList();
     }
-  }).getStores();
+  } catch (err) {
+    console.error("매장 목록 불러오기 실패:", err);
+  }
 }
 
 function renderSavedStoreList() {
@@ -1355,15 +1369,24 @@ function addStoreItemRow(item) {
 
 // 교사 PC 분할 실시간 미리보기 업데이트
 function updateKioskPreview() {
-  var name = document.getElementById('storeNameInput').value || '학급 매점';
-  var type = document.getElementById('storeTypeSelect').value;
-  var bagOpt = document.getElementById('stepBagOption').checked;
-  var bagPrice = document.getElementById('stepBagPrice').value || 0;
-  var notice = document.getElementById('stepNoticeMsg').value;
+  var nameInput = document.getElementById('storeNameInput');
+  var typeSelect = document.getElementById('storeTypeSelect');
+  var bagOptInput = document.getElementById('stepBagOption');
+  var bagPriceInput = document.getElementById('stepBagPrice');
+  var noticeInput = document.getElementById('stepNoticeMsg');
 
-  document.getElementById('previewStoreTitle').innerText = name + ' (미리보기)';
+  var name = nameInput ? nameInput.value || '학급 매점' : '학급 매점';
+  var type = typeSelect ? typeSelect.value : 'barcode';
+  var bagOpt = bagOptInput ? bagOptInput.checked : false;
+  var bagPrice = bagPriceInput ? bagPriceInput.value || 0 : 0;
+  var notice = noticeInput ? noticeInput.value : '';
+
+  var titleEl = document.getElementById('previewStoreTitle');
+  if (titleEl) titleEl.innerText = name + ' (미리보기)';
   
   var previewBox = document.getElementById('kioskPreviewContent');
+  if (!previewBox) return;
+
   var html = '<div class="p-3 bg-gray-800 rounded text-xs space-y-2">';
   html += '<p><strong>운영 방식:</strong> ' + (type === 'barcode' ? '📷 바코드 스캐너 모드' : '👆 상품 터치 선택 모드') + '</p>';
   if (notice) html += '<p class="text-yellow-300"><strong>안내문구:</strong> "' + escapeHtml(notice) + '"</p>';
@@ -1385,8 +1408,8 @@ function updateKioskPreview() {
   previewBox.innerHTML = html;
 }
 
-// 매장 저장
-function handleSaveStore(e) {
+// 매장 저장 (callBackend 사용으로 수정)
+async function handleSaveStore(e) {
   e.preventDefault();
   var storeId = document.getElementById('editStoreId').value;
   var name = document.getElementById('storeNameInput').value;
@@ -1410,13 +1433,14 @@ function handleSaveStore(e) {
 
   var payload = { storeId: storeId, storeName: name, storeType: type, steps: steps, items: items };
   
-  google.script.run.withSuccessHandler(function(res) {
+  const res = await callBackend('saveStore', payload);
+  if (res) {
     alert(res.message);
     if (res.success) {
       resetStoreForm();
       loadTeacherKioskStores();
     }
-  }).saveStore(payload);
+  }
 }
 
 function resetStoreForm() {
@@ -1426,12 +1450,13 @@ function resetStoreForm() {
   updateKioskPreview();
 }
 
-function deleteStoreConfig(storeId) {
+async function deleteStoreConfig(storeId) {
   if (!confirm('이 매장을 삭제하시겠습니까?')) return;
-  google.script.run.withSuccessHandler(function(res) {
+  const res = await callBackend('deleteStore', { storeId: storeId });
+  if (res) {
     alert(res.message);
     loadTeacherKioskStores();
-  }).deleteStore({ storeId: storeId });
+  }
 }
 
 // --- 실제 키오스크 모드 실행 로직 ---
@@ -1588,7 +1613,6 @@ function startKioskCheckoutProcess() {
   
   var steps = currentStoreConfig.steps || {};
   
-  // STEP 1 UI 세팅
   if (steps.noticeMsg) {
     document.getElementById('kioskNoticeBox').innerText = steps.noticeMsg;
     document.getElementById('kioskNoticeBox').classList.remove('hidden');
@@ -1643,8 +1667,8 @@ function closeKioskPayModal() {
   document.getElementById('kioskPaymentModal').classList.add('hidden');
 }
 
-// 최종 결제 요청 (백엔드 승인)
-function submitKioskPaymentAction() {
+// 최종 결제 요청 (callBackend 사용으로 수정)
+async function submitKioskPaymentAction() {
   var accNum = document.getElementById('kioskPayAccount').value.trim();
   var pwd = document.getElementById('kioskPayPassword').value.trim();
 
@@ -1666,13 +1690,14 @@ function submitKioskPaymentAction() {
     summary: summary
   };
 
-  google.script.run.withSuccessHandler(function(res) {
+  const res = await callBackend('processKioskPayment', payload);
+  if (res) {
     if (res.success) {
       showKioskReceipt(res, summary);
     } else {
       alert('결제 실패: ' + res.message);
     }
-  }).processKioskPayment(payload);
+  }
 }
 
 // 전자 영수증 출력 및 카운트다운
